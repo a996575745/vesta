@@ -212,7 +212,7 @@ const std::unordered_map<std::string_view, const char *> &chinese()
         {"BOUNDING BOX", "方框"},
         {"DETAILS", "信息"},
         {"SKELETON & HITBOXES", "骨骼和命中框"},
-        {"Enable Player ESP", "启用玩家 ESP"},
+        {"Enable Player ESP", "启用玩家透视"},
         {"Legit Sync", "合法同步"},
         {"Spectator Sync", "观战同步"},
         {"Direct Visibility", "直接可见"},
@@ -312,7 +312,7 @@ const std::unordered_map<std::string_view, const char *> &chinese()
         // --- item esp ---------------------------------------------------
         {"SETTINGS", "设置"},
         {"FILTERS", "过滤器"},
-        {"Enable Item ESP", "启用掉落物 ESP"},
+        {"Enable Item ESP", "启用掉落物透视"},
         {"Max Distance", "距离"},
         {"Show Icon", "图标"},
         {"Show Item Name", "名称"},
@@ -326,7 +326,7 @@ const std::unordered_map<std::string_view, const char *> &chinese()
         // --- projectile esp ---------------------------------------------
         {"VISUAL ELEMENTS", "视觉元素"},
         {"COLORS", "颜色"},
-        {"Enable Projectiles", "启用投掷物 ESP"},
+        {"Enable Projectiles", "启用投掷物透视"},
         {"Display Mode", "显示模式"},
         {"Indicator", "指示器"},
         {"Text Only", "仅文本"},
@@ -350,7 +350,7 @@ const std::unordered_map<std::string_view, const char *> &chinese()
         // --- bomb esp ---------------------------------------------------
         {"STATES", "状态"},
         {"SAFE ZONE (BAKED)", "安全区"},
-        {"Enable Bomb ESP", "启用炸弹 ESP"},
+        {"Enable Bomb ESP", "启用炸弹透视"},
         {"Show Carrier", "携带者"},
         {"Show Planted", "已安放"},
         {"Planted Color", "安放颜色"},
@@ -537,7 +537,7 @@ const std::unordered_map<std::string_view, const char *> &chinese()
         {"Browse...", "浏览..."},
 
         // --- esp editor -------------------------------------------------
-        {"ESP EDITOR", "ESP 编辑器"},
+        {"ESP EDITOR", "透视编辑器"},
         {"PREVIEW UNAVAILABLE", "预览不可用"},
 
         {"Manual lineup", "手动投掷"},
