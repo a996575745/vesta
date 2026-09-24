@@ -1927,15 +1927,73 @@ bool overlay_t::initialize_graphics()
 			app::context().diagnostics.warning( "ImGui font atlas is unavailable." );
 			return false;
 		}
+
+		// Chinese UI needs a much larger atlas than the default. Common hanzi
+		// plus Latin/Cyrillic glyphs comfortably overflow a 512px atlas, which
+		// silently drops glyphs at Build() time.
+		atlas->TexDesiredWidth = 4096;
+
+		// Chinese glyph coverage for UI + ESP. GetGlyphRangesChineseSimplifiedCommon()
+		// covers ~2500 of the most frequently used hanzi.
+		const ImWchar* const zh_ranges =
+			atlas->GetGlyphRangesChineseSimplifiedCommon( );
+
+		// Prefer a system Chinese font as the merge source. Fall back through
+		// the usual Windows CJK fonts.
+		const char* zh_font_path = nullptr;
+		for ( const auto* candidate : {
+			"C:/Windows/Fonts/msyh.ttc",    // Microsoft YaHei
+			"C:/Windows/Fonts/msyh.ttf",
+			"C:/Windows/Fonts/msyhbd.ttc",  // Microsoft YaHei Bold
+			"C:/Windows/Fonts/simhei.ttf",  // SimHei
+			"C:/Windows/Fonts/simsun.ttc",  // SimSun
+		} )
+		{
+			std::error_code exists_error{};
+			if ( std::filesystem::exists( candidate, exists_error ) )
+			{
+				zh_font_path = candidate;
+				break;
+			}
+		}
+		if ( !zh_font_path )
+		{
+			app::context().diagnostics.warning(
+				"no system Chinese font found -- Chinese UI text will not render." );
+		}
+
+		// ---- UI body font: notosans + Chinese fallback -------------------
 		this->m_fonts.notosans_medium_12 = zdraw::add_font_from_memory(
 			resources::fonts::notosans_medium, static_cast<int>(sizeof(resources::fonts::notosans_medium)),
 			12.0f, 512, 512, zdraw::font_raster_profile::smooth,
-			atlas->GetGlyphRangesCyrillic( ) );
+			zh_ranges );
+		if ( this->m_fonts.notosans_medium_12 && zh_font_path )
+		{
+			if ( !zdraw::merge_font_from_file( this->m_fonts.notosans_medium_12,
+				zh_font_path, 12.0f, zdraw::font_raster_profile::smooth ) )
+			{
+				app::context().diagnostics.warning(
+					"failed to merge Chinese fallback into UI body font." );
+			}
+		}
+
+		// ---- ESP text font: notosans + Chinese fallback ------------------
 		this->m_fonts.esp_text_11 = zdraw::add_font_from_memory(
 			resources::fonts::notosans_medium, static_cast<int>(sizeof(resources::fonts::notosans_medium)),
 			11.0f, 512, 512, zdraw::font_raster_profile::esp_text,
-			atlas->GetGlyphRangesCyrillic( ) );
+			zh_ranges );
+		if ( this->m_fonts.esp_text_11 && zh_font_path )
+		{
+			if ( !zdraw::merge_font_from_file( this->m_fonts.esp_text_11,
+				zh_font_path, 11.0f, zdraw::font_raster_profile::esp_text ) )
+			{
+				app::context().diagnostics.warning(
+					"failed to merge Chinese fallback into ESP text font." );
+			}
+		}
 
+		// Symbol / emoji fallbacks keep the no-fallback preload range so they
+		// do not duplicate Chinese coverage already merged above.
 		static constexpr ImWchar no_fallback_preload[]{ 0 };
 		if ( std::filesystem::exists( "C:/Windows/Fonts/seguisym.ttf" ) )
 		{
@@ -1957,6 +2015,8 @@ bool overlay_t::initialize_graphics()
 					"failed to merge Segoe UI Emoji ESP fallback." );
 			}
 		}
+
+		// ---- Weapon icon font (unchanged; Latin/icons only) --------------
 		this->m_fonts.weapons_15 = zdraw::add_font_from_memory(
 			resources::fonts::weapons, static_cast<int>(sizeof(resources::fonts::weapons)),
 			16.0f, 512, 512, zdraw::font_raster_profile::smooth );
@@ -1967,15 +2027,32 @@ bool overlay_t::initialize_graphics()
 		{
 			this->m_fonts.weapons_esp_15->plain_im_font = this->m_fonts.weapons_15->im_font;
 		}
+
+		// ---- Menu fonts: switch to a CJK-capable typeface ----------------
 		const auto dpi_window = this->m_window_tracker.target( )
 			? this->m_window_tracker.target( ) : this->m_hwnd;
 		this->m_ui_dpi_scale = std::clamp(
 			static_cast<float>( ::GetDpiForWindow( dpi_window ) ) / 96.0f,
 			1.0f, 1.5f );
 		const auto menu_dpi_scale = this->m_ui_dpi_scale;
-		this->m_fonts.menu_regular_12 = zdraw::add_font_from_file("C:/Windows/Fonts/segoeui.ttf", 16.0f * menu_dpi_scale);
-		this->m_fonts.menu_semibold_13 = zdraw::add_font_from_file("C:/Windows/Fonts/seguisb.ttf", 16.0f * menu_dpi_scale);
-		this->m_fonts.menu_brand_30 = zdraw::add_font_from_file("C:/Windows/Fonts/segoeuib.ttf", 38.0f * menu_dpi_scale);
+
+		const char* menu_regular_path = zh_font_path
+			? zh_font_path : "C:/Windows/Fonts/segoeui.ttf";
+		const char* menu_bold_path = "C:/Windows/Fonts/msyhbd.ttc";
+		{
+			std::error_code bold_error{};
+			if ( !std::filesystem::exists( menu_bold_path, bold_error ) )
+				menu_bold_path = menu_regular_path;
+		}
+
+		this->m_fonts.menu_regular_12 = zdraw::add_font_from_file(
+			menu_regular_path, 16.0f * menu_dpi_scale );
+		this->m_fonts.menu_semibold_13 = zdraw::add_font_from_file(
+			menu_bold_path, 16.0f * menu_dpi_scale );
+		this->m_fonts.menu_brand_30 = zdraw::add_font_from_file(
+			menu_bold_path, 38.0f * menu_dpi_scale );
+
+		// ---- Font readiness check ----------------------------------------
 		const auto font_ready = []( const zdraw::font* font )
 		{
 			return font && font->im_font;
