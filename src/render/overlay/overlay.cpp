@@ -1928,26 +1928,28 @@ bool overlay_t::initialize_graphics()
 			return false;
 		}
 
-		// Chinese UI needs a much larger atlas than the default. Common hanzi
-		// plus Latin/Cyrillic glyphs comfortably overflow a 512px atlas, which
-		// silently drops glyphs at Build() time.
-		atlas->TexDesiredWidth = 4096;
+		// NOTE: this vendored ImGui build has no ImFontAtlas::TexDesiredWidth,
+		// so the atlas automatically picks its own width at Build() time
+		// (512 -> 1024 -> 2048 -> 4096 as needed).
 
-		// Chinese glyph coverage for UI + ESP. GetGlyphRangesChineseSimplifiedCommon()
-		// covers ~2500 of the most frequently used hanzi.
+		// Chinese glyph coverage for UI + ESP.
+		// GetGlyphRangesChineseSimplifiedCommon() covers ~2500 of the most
+		// frequently used hanzi.
 		const ImWchar* const zh_ranges =
 			atlas->GetGlyphRangesChineseSimplifiedCommon( );
 
 		// Prefer a system Chinese font as the merge source. Fall back through
 		// the usual Windows CJK fonts.
-		const char* zh_font_path = nullptr;
-		for ( const auto* candidate : {
+		static const char* const k_zh_font_candidates[] = {
 			"C:/Windows/Fonts/msyh.ttc",    // Microsoft YaHei
 			"C:/Windows/Fonts/msyh.ttf",
 			"C:/Windows/Fonts/msyhbd.ttc",  // Microsoft YaHei Bold
 			"C:/Windows/Fonts/simhei.ttf",  // SimHei
 			"C:/Windows/Fonts/simsun.ttc",  // SimSun
-		} )
+		};
+
+		const char* zh_font_path = nullptr;
+		for ( const char* candidate : k_zh_font_candidates )
 		{
 			std::error_code exists_error{};
 			if ( std::filesystem::exists( candidate, exists_error ) )
