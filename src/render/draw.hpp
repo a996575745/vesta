@@ -72,6 +72,21 @@ enum class font_raster_profile : std::uint8_t
 		|| profile == font_raster_profile::esp_icon;
 }
 
+// -----------------------------------------------------------------------------
+// Chinese glyph range helper
+// -----------------------------------------------------------------------------
+// Returns the built-in "Simplified Chinese Common" glyph range from ImGui's
+// font atlas. It covers ~2500 of the most frequently used hanzi, which is
+// enough for menu / UI text and keeps the atlas texture small. If you need
+// the full range (~20k+ glyphs), swap this out for GetGlyphRangesChineseFull().
+[[nodiscard]] inline const ImWchar* default_chinese_glyph_ranges()
+{
+	auto* fonts = ImGui::GetIO().Fonts;
+	if (!fonts)
+		return nullptr;
+	return fonts->GetGlyphRangesChineseSimplifiedCommon();
+}
+
 // font wrapper around ImFont
 struct font
 {
@@ -385,6 +400,12 @@ inline font* add_font_from_memory(const void* font_data, int font_size, float si
 	auto* fonts = ImGui::GetIO().Fonts;
 	if (!fonts)
 		return nullptr;
+
+	// Default to the Simplified Chinese common glyph range when the caller
+	// did not supply an explicit range, so the font can render hanzi.
+	if (!glyph_ranges)
+		glyph_ranges = fonts->GetGlyphRangesChineseSimplifiedCommon();
+
 	ImFontConfig cfg;
 	cfg.SizePixels = size_pixels;
 	cfg.OversampleH = 0;
@@ -415,6 +436,12 @@ inline font* add_font_from_file(std::string_view filepath, float size_pixels, in
 	auto* fonts = ImGui::GetIO().Fonts;
 	if (!fonts)
 		return nullptr;
+
+	// Default to the Simplified Chinese common glyph range when the caller
+	// did not supply an explicit range, so the font can render hanzi.
+	if (!glyph_ranges)
+		glyph_ranges = fonts->GetGlyphRangesChineseSimplifiedCommon();
+
 	ImFontConfig cfg;
 	cfg.SizePixels = size_pixels;
 	cfg.OversampleH = 0;
@@ -439,6 +466,14 @@ inline bool merge_font_from_file(font* destination, std::string_view filepath,
 		|| !ImGui::GetIO().Fonts)
 		return false;
 
+	auto* fonts = ImGui::GetIO().Fonts;
+
+	// When no range is provided, default to the Chinese common glyph range.
+	// This is the typical use case: merge a hanzi-capable TTF into an
+	// existing Latin font so menus can display Chinese text.
+	if (!preload_ranges)
+		preload_ranges = fonts->GetGlyphRangesChineseSimplifiedCommon();
+
 	ImFontConfig cfg;
 	cfg.MergeMode = true;
 	cfg.DstFont = destination->im_font;
@@ -450,7 +485,7 @@ inline bool merge_font_from_file(font* destination, std::string_view filepath,
 	cfg.FontLoaderFlags = ImGuiFreeTypeLoaderFlags_LightHinting
 		| ( is_esp_profile( raster_profile )
 			? ImGuiFreeTypeLoaderFlags_VestaEspMask : 0u );
-	return ImGui::GetIO().Fonts->AddFontFromFileTTF(
+	return fonts->AddFontFromFileTTF(
 		std::string(filepath).c_str(), size_pixels, &cfg, preload_ranges) != nullptr;
 }
 
